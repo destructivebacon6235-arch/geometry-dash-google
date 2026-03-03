@@ -116,11 +116,11 @@ window.addEventListener('keydown', (e) => {
 
     // Secret Level Editor Access
     if (gameState === 'MENU' && e.code === 'KeyL') {
-        const pass = prompt("Gizli Şifre:");
+        const pass = prompt("Secret Password:");
         if (pass === "GoogleDash2000") {
             enterEditor();
         } else if (pass !== null) {
-            alert("Hatalı Giriş!");
+            alert("Incorrect Entry!");
         }
     }
 
@@ -173,7 +173,7 @@ function setTool(tool) {
 
 publishBtn.addEventListener('click', () => {
     localStorage.setItem('gd_google_published_level', JSON.stringify(customLevel));
-    alert("Seviye başarıyla yayınlandı!");
+    alert("Level successfully published!");
     exitEditor();
 });
 
@@ -318,29 +318,46 @@ function update() {
         const obsW = obs.type === 0 ? 40 : obs.w;
         const obsH = obs.type === 0 ? 40 : obs.h;
 
-        // Simple AABB collision
-        if (player.x + PLAYER_SIZE > obsX &&
-            player.x < obsX + obsW &&
-            player.y + PLAYER_SIZE > obsY &&
-            player.y < obsY + obsH) {
+        // TIGHT HITBOXES
+        let hitX = obsX;
+        let hitY = obsY;
+        let hitW = obsW;
+        let hitH = obsH;
+
+        if (obs.type === 0) {
+            // SPIKE: Smaller horizontal hitbox for fairness
+            hitX = obsX + 10;
+            hitW = obsW - 20;
+            hitY = obsY + 5;
+            hitH = obsH - 5;
+        } else {
+            // BLOCK: Slightly smaller size for side detection
+            hitX = obsX + 2;
+            hitW = obsW - 4;
+        }
+
+        // Simple AABB collision with refined hitboxes
+        if (player.x + PLAYER_SIZE - 2 > hitX &&
+            player.x + 2 < hitX + hitW &&
+            player.y + PLAYER_SIZE > hitY &&
+            player.y < hitY + hitH) {
 
             // Spike collision = direct death
             if (obs.type === 0) {
                 die();
             } else {
                 // Block collision
-                // If hitting side
-                if (player.x + PLAYER_SIZE - SPEED <= obsX) {
+                // If hitting side (check original obsX for side logic)
+                if (player.x + PLAYER_SIZE - SPEED <= obsX + 2) {
                     die();
                 }
                 // If landing on top
-                else if (player.vy > 0 && player.y + PLAYER_SIZE - player.vy <= obsY) {
+                else if (player.vy > 0 && player.y + PLAYER_SIZE - player.vy <= obsY + 10) {
                     player.y = obsY - PLAYER_SIZE;
                     player.vy = 0;
                     player.isJumping = false;
                     player.rotation = Math.round(player.rotation / 90) * 90;
                 }
-                // If hitting bottom (optional but good for GD)
                 else {
                     die();
                 }
@@ -461,12 +478,6 @@ function draw() {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.strokeRect(-PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
-
-        // Face detail
-        ctx.fillStyle = '#000';
-        ctx.fillRect(-12, -12, 8, 8);
-        ctx.fillRect(4, -12, 8, 8);
-        ctx.fillRect(-10, 8, 20, 4);
 
         ctx.restore();
     }
