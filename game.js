@@ -6,9 +6,9 @@ const hud = document.getElementById('hud');
 const progressBar = document.getElementById('progress-bar');
 
 // Game constants
-const GRAVITY = 0.8;
-const JUMP_FORCE = -12;
-const SPEED = 6;
+const GRAVITY = 1.1;
+const JUMP_FORCE = -16;
+const SPEED = 10;
 const PLAYER_SIZE = 40;
 const GROUND_Y = 0.8; // % of height
 const GRID_SIZE = 40;
