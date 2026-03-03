@@ -11,11 +11,26 @@ const JUMP_FORCE = -12;
 const SPEED = 6;
 const PLAYER_SIZE = 40;
 const GROUND_Y = 0.8; // % of height
+const GRID_SIZE = 40;
 
 let width, height, groundY;
-let gameState = 'MENU';
+let gameState = 'MENU'; // MENU, PLAYING, EDITOR, GAMEOVER
 let frames = 0;
 let hue = 200;
+
+// Editor Variables
+let editorTool = 'spike'; // spike, block, erase
+let editorScrollX = 0;
+let customLevel = [];
+
+// DOM Elements for Editor
+const editorUI = document.getElementById('editor-ui');
+const editorControls = document.getElementById('editor-controls');
+const toolSpikeBtn = document.getElementById('tool-spike');
+const toolBlockBtn = document.getElementById('tool-block');
+const toolEraseBtn = document.getElementById('tool-erase');
+const publishBtn = document.getElementById('publish-btn');
+const exitEditorBtn = document.getElementById('exit-editor-btn');
 
 // Game objects
 let player = {
@@ -58,7 +73,7 @@ const LEVEL_END_X = 5500;
 
 function init() {
     resize();
-    resetGame();
+    loadPublishedLevel();
     animate();
 }
 
@@ -77,7 +92,13 @@ function resetGame() {
     player.rotation = 0;
     player.isJumping = false;
     player.isDead = false;
-    obstacles = [...levelData];
+
+    // Load from memory if available, otherwise default
+    if (customLevel.length > 0) {
+        obstacles = JSON.parse(JSON.stringify(customLevel));
+    } else {
+        obstacles = JSON.parse(JSON.stringify(levelData));
+    }
     particles = [];
 }
 
@@ -92,23 +113,123 @@ function jump() {
 const keys = {};
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
-    if (e.code === 'Space' || e.code === 'ArrowUp') {
-        if (gameState === 'PLAYING') jump();
+
+    // Secret Level Editor Access
+    if (gameState === 'MENU' && e.code === 'KeyL') {
+        const pass = prompt("Gizli Şifre:");
+        if (pass === "GoogleDash2000") {
+            enterEditor();
+        } else if (pass !== null) {
+            alert("Hatalı Giriş!");
+        }
+    }
+
+    if (gameState === 'PLAYING') {
+        if (e.code === 'Space' || e.code === 'ArrowUp') jump();
     }
 });
+
 window.addEventListener('keyup', (e) => keys[e.code] = false);
+
 window.addEventListener('mousedown', () => {
     if (gameState === 'PLAYING') jump();
 });
+
 window.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    if (gameState === 'PLAYING') jump();
+    if (gameState === 'PLAYING') {
+        e.preventDefault();
+        jump();
+    }
+}, { passive: false });
+
+function enterEditor() {
+    gameState = 'EDITOR';
+    menu.classList.add('hidden');
+    hud.style.display = 'none';
+    editorUI.style.display = 'flex';
+    editorControls.style.display = 'flex';
+    editorScrollX = 0;
+}
+
+function exitEditor() {
+    gameState = 'MENU';
+    menu.classList.remove('hidden');
+    editorUI.style.display = 'none';
+    editorControls.style.display = 'none';
+}
+
+exitEditorBtn.addEventListener('click', exitEditor);
+
+toolSpikeBtn.addEventListener('click', () => setTool('spike'));
+toolBlockBtn.addEventListener('click', () => setTool('block'));
+toolEraseBtn.addEventListener('click', () => setTool('erase'));
+
+function setTool(tool) {
+    editorTool = tool;
+    toolSpikeBtn.classList.toggle('active', tool === 'spike');
+    toolBlockBtn.classList.toggle('active', tool === 'block');
+    toolEraseBtn.classList.toggle('active', tool === 'erase');
+}
+
+publishBtn.addEventListener('click', () => {
+    localStorage.setItem('gd_google_published_level', JSON.stringify(customLevel));
+    alert("Seviye başarıyla yayınlandı!");
+    exitEditor();
 });
+
+function loadPublishedLevel() {
+    const saved = localStorage.getItem('gd_google_published_level');
+    if (saved) {
+        customLevel = JSON.parse(saved);
+    }
+    resetGame();
+}
+
+// Editor Mouse Interaction
+canvas.addEventListener('mousedown', (e) => {
+    if (gameState !== 'EDITOR') return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left - 200 + editorScrollX; // Offset by starting camera
+    const my = e.clientY - rect.top;
+
+    const gridX = Math.floor(mx / GRID_SIZE) * GRID_SIZE;
+    const gridY = Math.floor(my / GRID_SIZE) * GRID_SIZE;
+
+    if (e.button === 0) { // Left Click - Place
+        if (editorTool === 'erase') {
+            removeAt(gridX, gridY);
+        } else {
+            placeAt(gridX, gridY, editorTool);
+        }
+    } else if (e.button === 2) { // Right Click - Erase
+        removeAt(gridX, gridY);
+    }
+});
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+function placeAt(x, y, tool) {
+    removeAt(x, y); // Prevent overlapping
+    if (tool === 'spike') {
+        // Spikes in this engine are always on ground or block top
+        // But for editor we save current X and let draw/collision handle Y
+        customLevel.push({ x: x, type: 0 });
+    } else {
+        const heightFromGround = groundY - (y + GRID_SIZE);
+        customLevel.push({ x: x, type: 1, w: GRID_SIZE, h: GRID_SIZE, editorY: y });
+    }
+}
+
+function removeAt(x, y) {
+    customLevel = customLevel.filter(obs => obs.x !== x || (obs.type === 1 && obs.editorY !== y));
+}
 
 startBtn.addEventListener('click', () => {
     gameState = 'PLAYING';
     menu.classList.add('hidden');
     hud.style.display = 'flex';
+    resetGame();
 });
 
 function createDeathParticles(x, y) {
@@ -125,6 +246,12 @@ function createDeathParticles(x, y) {
 }
 
 function update() {
+    if (gameState === 'EDITOR') {
+        if (keys['ArrowRight']) editorScrollX += 10;
+        if (keys['ArrowLeft']) editorScrollX = Math.max(0, editorScrollX - 10);
+        return;
+    }
+
     if (gameState !== 'PLAYING' || player.isDead) {
         // Update particles even if dead
         particles.forEach((p, i) => {
@@ -249,9 +376,27 @@ function draw() {
     ctx.fillRect(0, 0, width, height);
 
     ctx.save();
-    // Offset camera to follow player (basic horizontal scroll)
-    const cameraX = -player.x + 200;
+    // Offset camera
+    const cameraX = gameState === 'EDITOR' ? -editorScrollX : -player.x + 200;
     ctx.translate(cameraX, 0);
+
+    if (gameState === 'EDITOR') {
+        // Draw Grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < width + editorScrollX; x += GRID_SIZE) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+        }
+        for (let y = 0; y < height; y += GRID_SIZE) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width + editorScrollX, y);
+            ctx.stroke();
+        }
+    }
 
     // Draw Ground
     ctx.strokeStyle = `hsl(${(hue + 20) % 360}, 100%, 70%)`;
@@ -268,7 +413,8 @@ function draw() {
     ctx.shadowBlur = 0;
 
     // Draw Obstacles
-    obstacles.forEach(obs => {
+    const targetObstacles = gameState === 'EDITOR' ? customLevel : obstacles;
+    targetObstacles.forEach(obs => {
         ctx.fillStyle = '#fff';
         ctx.strokeStyle = `hsl(${(hue + 60) % 360}, 100%, 60%)`;
         ctx.lineWidth = 3;
@@ -278,11 +424,12 @@ function draw() {
             const x = obs.x;
             // Check if there's a block below for stacking
             let y = groundY;
-            obstacles.forEach(other => {
+            targetObstacles.forEach(other => {
                 if (other.type === 1 && obs.x >= other.x && obs.x < other.x + other.w) {
                     y = groundY - other.h;
                 }
             });
+            // Editor might have floating spikes - let's keep them on ground/block for simplicity
 
             ctx.beginPath();
             ctx.moveTo(x, y);
@@ -293,14 +440,14 @@ function draw() {
             ctx.stroke();
         } else {
             // Block
-            const y = groundY - obs.h;
+            const y = gameState === 'EDITOR' ? obs.editorY : groundY - obs.h;
             ctx.fillRect(obs.x, y, obs.w, obs.h);
             ctx.strokeRect(obs.x, y, obs.w, obs.h);
         }
     });
 
     // Draw Player
-    if (!player.isDead) {
+    if (gameState !== 'EDITOR' && !player.isDead) {
         ctx.save();
         ctx.translate(player.x + PLAYER_SIZE / 2, player.y + PLAYER_SIZE / 2);
         ctx.rotate(player.rotation * Math.PI / 180);

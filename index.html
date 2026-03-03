@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,7 +13,8 @@
             --font-main: 'Inter', system-ui, -apple-system, sans-serif;
         }
 
-        body, html {
+        body,
+        html {
             margin: 0;
             padding: 0;
             width: 100%;
@@ -73,8 +75,13 @@
         }
 
         @keyframes pulse {
-            from { text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue); }
-            to { text-shadow: 0 0 20px var(--neon-blue), 0 0 40px var(--neon-pink), 0 0 60px var(--neon-pink); }
+            from {
+                text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue);
+            }
+
+            to {
+                text-shadow: 0 0 20px var(--neon-blue), 0 0 40px var(--neon-pink), 0 0 60px var(--neon-pink);
+            }
         }
 
         .btn {
@@ -88,13 +95,13 @@
             transition: all 0.3s ease;
             text-transform: uppercase;
             font-weight: bold;
-            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
         }
 
         .btn:hover {
             background: white;
             color: black;
-            box-shadow: 0 0 30px rgba(255,255,255,0.5);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
             transform: scale(1.1);
         }
 
@@ -109,10 +116,10 @@
         #progress-container {
             width: 60%;
             height: 10px;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 5px;
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             margin-top: 10px;
         }
 
@@ -124,15 +131,58 @@
             transition: width 0.1s linear;
         }
 
+        /* Level Editor Styles */
+        #editor-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border: 1px solid var(--neon-blue);
+            border-radius: 8px;
+            z-index: 20;
+        }
+
+        .editor-btn {
+            padding: 8px 15px;
+            background: transparent;
+            color: white;
+            border: 1px solid white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .editor-btn.active {
+            background: var(--neon-blue);
+            color: black;
+            border-color: var(--neon-blue);
+        }
+
+        #editor-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: none;
+            gap: 10px;
+            pointer-events: auto;
+            z-index: 20;
+        }
+
         .hidden {
             display: none !important;
         }
     </style>
 </head>
+
 <body>
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
-        
+
         <div id="ui-overlay">
             <div id="menu">
                 <h1>GEOMETRY DASH<br>(GOOGLE)</h1>
@@ -144,9 +194,26 @@
                     <div id="progress-bar"></div>
                 </div>
             </div>
+
+            <!-- Level Editor UI -->
+            <div id="editor-ui">
+                <h3 style="margin:0 0 10px 0; color:var(--neon-blue)">LEVEL EDITOR</h3>
+                <button class="editor-btn active" id="tool-spike">DİKEN (S)</button>
+                <button class="editor-btn" id="tool-block">BLOK (B)</button>
+                <button class="editor-btn" id="tool-erase">SİL (E)</button>
+                <hr style="width:100%; border:0; border-top:1px solid #444">
+                <button class="editor-btn" id="publish-btn"
+                    style="border-color:var(--neon-pink); color:var(--neon-pink)">YAYINLA</button>
+                <button class="editor-btn" id="exit-editor-btn">ÇIKIŞ</button>
+            </div>
+
+            <div id="editor-controls">
+                <span style="color:#888; font-size: 0.8rem;">Sol Tık: Yerleştir | Sağ Tık: Sil</span>
+            </div>
         </div>
     </div>
 
     <script src="game.js"></script>
 </body>
+
 </html>
