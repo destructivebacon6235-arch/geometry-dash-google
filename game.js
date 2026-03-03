@@ -90,7 +90,7 @@ function resetGame() {
 
     // Update Menu Display
     if (levelNameDisplay) {
-        levelNameDisplay.innerText = levelName ? `Active Level: ${levelName}` : "Active Level: No Level Loaded";
+        levelNameDisplay.innerText = levelName ? `ACTIVE LEVEL: ${levelName}` : "ACTIVE LEVEL: NO LEVEL LOADED";
     }
 }
 
