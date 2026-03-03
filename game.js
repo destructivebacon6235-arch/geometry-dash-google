@@ -47,29 +47,11 @@ let obstacles = [];
 let particles = [];
 
 // Level data (X positions, type: 0=spike, 1=block)
-const levelData = [
-    { x: 800, type: 0 },
-    { x: 1200, type: 0 },
-    { x: 1500, type: 1, w: 120, h: 40 },
-    { x: 1800, type: 0 },
-    { x: 1860, type: 0 },
-    { x: 2100, type: 1, w: 40, h: 80 },
-    { x: 2140, type: 1, w: 40, h: 120 },
-    { x: 2500, type: 0 },
-    { x: 2560, type: 0 },
-    { x: 2800, type: 1, w: 200, h: 40 },
-    { x: 2800, type: 0 }, // Spike on top of block (will need offset)
-    { x: 3200, type: 0 },
-    { x: 3260, type: 0 },
-    { x: 3320, type: 0 },
-    { x: 3600, type: 1, w: 80, h: 80 },
-    { x: 3680, type: 1, w: 80, h: 40 },
-    { x: 4000, type: 0 },
-    { x: 4200, type: 0 },
-    { x: 4400, type: 1, w: 300, h: 40 },
-    { x: 4450, type: 0 }, // Spike on bridge
-];
-const LEVEL_END_X = 5500;
+// Default level data removed as requested
+const levelData = [];
+let LEVEL_END_X = 2000;
+let levelName = "";
+const levelNameDisplay = document.getElementById('active-level-display');
 
 function init() {
     resize();
@@ -96,10 +78,20 @@ function resetGame() {
     // Load from memory if available, otherwise default
     if (customLevel.length > 0) {
         obstacles = JSON.parse(JSON.stringify(customLevel));
+        // Dynamically set end location based on furthest obstacle
+        let furthestX = 0;
+        obstacles.forEach(o => { if (o.x > furthestX) furthestX = o.x; });
+        LEVEL_END_X = furthestX + 1000;
     } else {
         obstacles = JSON.parse(JSON.stringify(levelData));
+        LEVEL_END_X = 2000;
     }
     particles = [];
+
+    // Update Menu Display
+    if (levelNameDisplay) {
+        levelNameDisplay.innerText = levelName ? `Active Level: ${levelName}` : "Active Level: No Level Loaded";
+    }
 }
 
 function jump() {
@@ -172,15 +164,25 @@ function setTool(tool) {
 }
 
 publishBtn.addEventListener('click', () => {
-    localStorage.setItem('gd_google_published_level', JSON.stringify(customLevel));
-    alert("Level successfully published!");
-    exitEditor();
+    const name = prompt("Enter Level Name:");
+    if (name) {
+        levelName = name;
+        const saveData = {
+            name: levelName,
+            data: customLevel
+        };
+        localStorage.setItem('gd_google_published_level', JSON.stringify(saveData));
+        alert(`'${levelName}' successfully published!`);
+        exitEditor();
+    }
 });
 
 function loadPublishedLevel() {
     const saved = localStorage.getItem('gd_google_published_level');
     if (saved) {
-        customLevel = JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        levelName = parsed.name || "Untitled";
+        customLevel = parsed.data || [];
     }
     resetGame();
 }
@@ -190,7 +192,7 @@ canvas.addEventListener('mousedown', (e) => {
     if (gameState !== 'EDITOR') return;
 
     const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left - 200 + editorScrollX; // Offset by starting camera
+    const mx = e.clientX - rect.left + editorScrollX; // Fixed: removed erroneous -200
     const my = e.clientY - rect.top;
 
     const gridX = Math.floor(mx / GRID_SIZE) * GRID_SIZE;
